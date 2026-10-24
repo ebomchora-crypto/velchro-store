@@ -26,7 +26,8 @@
   const items = P.map((p, i) => {
     const el = document.createElement('div');
     el.className = 'item';
-    const slices = [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((k) => `<div class="slice" style="transform:translateZ(calc(var(--iw)*${k * 0.00625}))">${Garments.build(p, 'front', { slice: true })}</div>`).join('');
+    const steps = p.photo ? [-3, -1.5, 0, 1.5, 3] : [-4, -3, -2, -1, 0, 1, 2, 3, 4];
+    const slices = steps.map((k) => `<div class="slice" style="transform:translateZ(calc(var(--iw)*${k * (p.photo ? 0.0083 : 0.00625)}))">${Garments.build(p, 'front', { slice: true })}</div>`).join('');
     el.innerHTML = `
       <div class="cast"></div>
       <div class="pivot"><div class="sway"><div class="turn">
@@ -87,8 +88,7 @@
   }
 
   function placeInfo() {
-    const spec = Garments.SPECS[P[Math.max(focus, 0)].type];
-    const hemY = spec.hem / 400;
+    const hemY = Garments.hem(P[Math.max(focus, 0)]) / 400;
     infoEl.style.top = railFocus + (hemY - HOOK) * fiw + 22 + 'px';
     const mid = railFocus + fiw * 0.62;
     focusEl.style.setProperty('--arrow-y', mid + 'px');
@@ -248,7 +248,8 @@
     stage.classList.remove('dragging');
     if (focus >= 0) {
       if (d.moved) {
-        const n = Math.round((items[focus].tn + d.v * 160) / 180);
+        let n = Math.round((items[focus].tn + d.v * 160) / 180);
+        if (P[focus].photo) n = Math.round(n / 2) * 2; // fotos não têm costas
         face = Math.abs(n) % 2 ? 'back' : 'front';
         faceTurnTarget = n * 180;
         manualTurn = null;
@@ -320,6 +321,7 @@
   function fill() {
     const p = P[focus];
     $('#infoName').textContent = p.name;
+    $('#seg').style.display = p.photo ? 'none' : '';
     $('#infoPrice').innerHTML = `<b>${brl(p.price)}</b> · em até 3x sem juros`;
     $('#sizes').innerHTML = V.sizes.map((s) => `<button type="button" data-size="${s}" aria-pressed="false">${s}</button>`).join('');
     syncSeg();

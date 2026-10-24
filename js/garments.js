@@ -210,7 +210,47 @@
       <path d="${d.replace(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g, (_, x, y) => `${+x + 9},${y}`)}" fill="none" stroke="#000" stroke-opacity=".13" stroke-width="10" filter="url(#soft)"/>`).join('');
   }
 
+  /* Peças com foto real: a imagem recortada (PNG/WebP com alfa) pendura num cabide, grampo ou no próprio cabide da foto. */
+  function photoLayout(ph) {
+    const top = ph.hang === 'own' ? 52 : ph.hang === 'clip' ? 92 : 90;
+    const s = Math.min(330 / ph.w, (492 - top) / ph.h);
+    const w = ph.w * s, h = ph.h * s;
+    return { top, x: 200 - w / 2, w, h, bottom: top + h };
+  }
+
+  function photoHanger(ph, L) {
+    if (ph.hang === 'own') {
+      return `<g>${hookPath(L.top + 14)}</g>`;
+    }
+    if (ph.hang === 'clip') {
+      return `<g><path d="M150,${L.top - 2} H250" stroke="#161614" stroke-width="6" stroke-linecap="round"/>${hookPath(L.top - 2)}</g>`;
+    }
+    return hanger('tee');
+  }
+
+  function hookPath(to) {
+    const d = `M200,${to} L200,16 Q200,8 208,8`;
+    return `<path d="${d}" fill="none" stroke="#2b2b29" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="${d}" fill="none" stroke="#d8d9d4" stroke-width="1.5" stroke-linecap="round"/>`;
+  }
+
+  function buildPhoto(p, face, opt) {
+    const ph = p.photo, L = photoLayout(ph);
+    const flip = face === 'back' ? ` transform="translate(400 0) scale(-1 1)"` : '';
+    const img = (style) => `<image href="${ph.src}" x="${L.x}" y="${L.top}" width="${L.w}" height="${L.h}" preserveAspectRatio="xMidYMid meet"${style}/>`;
+    if (opt.slice) {
+      return `<svg viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g style="filter:brightness(.42)">${img('')}</g></svg>`;
+    }
+    return `<svg viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${p.name}">
+      ${photoHanger(ph, L)}
+      <g${flip}>${img('')}</g>
+    </svg>`;
+  }
+
+  const hem = (p) => (p.photo ? photoLayout(p.photo).bottom : SPECS[p.type].hem);
+
   function build(p, face, opt = {}) {
+    if (p.photo) return buildPhoto(p, face, opt);
     const spec = SPECS[p.type];
     const back = face === 'back';
     const id = `g${++uid}`;
@@ -242,5 +282,5 @@
     </svg>`;
   }
 
-  window.Garments = { build, SPECS };
+  window.Garments = { build, SPECS, hem };
 })();
