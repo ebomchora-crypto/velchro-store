@@ -74,7 +74,7 @@
     fiw = Math.max(180, Math.min(0.45 * H, 0.7 * W, fit));
 
     const rod = iw * 0.03039 - 1;
-    const railW = W * (narrow ? 0.94 : 0.745);
+    const railW = W * 1.04; // trilho de ponta a ponta: o cabideiro parece continuar fora da tela
     document.documentElement.style.setProperty('--iw', iw + 'px');
     document.documentElement.style.setProperty('--rod', Math.max(8, rod + 2) + 'px');
     rail.style.left = (W - railW) / 2 + 'px';
@@ -451,24 +451,35 @@
     sobre: `<h2>Sobre</h2>
       <p>A Velchro nasceu de uma ideia simples: roupa boa se escolhe com a mão, no cabide, olhando de perto. Aqui o site é a loja — o cabideiro é o mesmo, só que cabe no seu bolso.</p>
       <p>Cada peça sai em tiragem curta, com modelagem larga e tecido pesado. Quando acaba, acaba.</p>
-      <p>Dúvidas? Fale com a gente em <a href="mailto:contato@velchro.com">contato@velchro.com</a>.</p>`,
+      <p>Dúvidas? Fale com a gente em <a href="mailto:contato@velchro.com">contato@velchro.com</a>.</p>
+      <p><a href="#creditos" data-open="creditos">Créditos das fotos</a></p>`,
     contato: `<h2>Contato</h2>
       <p>Pedidos, trocas e parcerias:</p>
       <p><a href="https://instagram.com/" target="_blank" rel="noopener">@velchro</a><br><a href="mailto:contato@velchro.com">contato@velchro.com</a></p>
       <p>Atendimento de segunda a sábado, das 10h às 19h.</p>`,
   };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function creditsHtml() {
+    const rows = P.filter((p) => p.credit).map((p) => `<li><b>${esc(p.name)}</b> — ${esc(p.credit.author || 'autor não informado')} · ${esc(p.credit.lic)} · <a href="${esc(p.credit.page)}" target="_blank" rel="noopener">fonte</a></li>`);
+    return `<h2>Créditos</h2><p>Fotos de domínio público ou sob licenças livres, via Wikimedia Commons, recortadas para o cabideiro.</p><ul class="credits">${rows.join('')}</ul>`;
+  }
   function sheet(name) {
     const el = $('#sheet');
-    if (name) $('#sheetBody').innerHTML = SHEETS[name];
+    if (name) $('#sheetBody').innerHTML = name === 'creditos' ? creditsHtml() : SHEETS[name];
     el.classList.toggle('on', !!name);
     el.setAttribute('aria-hidden', String(!name));
   }
   document.querySelectorAll('[data-sheet]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); sheet(a.dataset.sheet); }));
   $('#sheetClose').addEventListener('click', () => sheet(null));
+  $('#sheetBody').addEventListener('click', (e) => {
+    const l = e.target.closest('[data-open]');
+    if (l) { e.preventDefault(); sheet(l.dataset.open); }
+  });
 
   /* ---------- início ---------- */
   addEventListener('resize', layout);
   layout();
+  scroll = scrollTarget = maxScroll; // começa com a primeira peça à esquerda
   renderBag();
   const start = P.findIndex((p) => '#' + p.id === location.hash);
   if (start >= 0) {

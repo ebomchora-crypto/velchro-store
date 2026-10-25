@@ -51,12 +51,12 @@ ul { margin: 0; padding: 0; list-style: none; }
 .light { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 40% 60% at var(--lx, 50%) 18%, rgba(255,250,235,.5), transparent 70%); transition: background-position .3s; }
 
 .rail { position: absolute; z-index: 5; height: var(--rod, 9px); transform: translateY(-50%); }
-.rail-tube { position: absolute; inset: 0 14px; border-radius: 99px;
+.rail-tube { position: absolute; inset: 0; border-radius: 99px;
   background:
     linear-gradient(90deg, transparent 32%, rgba(40,40,38,.28) 37%, rgba(40,40,38,.1) 44%, transparent 50% 82%, rgba(40,40,38,.25) 88%, transparent 93%),
     linear-gradient(#7d7e7a 0%, #c9cac5 18%, #fbfbf8 38%, #e2e3df 55%, #9c9d98 80%, #5f605c 100%);
   box-shadow: 0 6px 7px -3px rgba(20,20,18,.28); }
-.rail-end { position: absolute; top: 50%; width: 14px; height: 36px; transform: translateY(-50%); }
+.rail-end { display: none; position: absolute; top: 50%; width: 14px; height: 36px; transform: translateY(-50%); }
 .rail-end.l { left: 0; } .rail-end.r { right: 0; }
 .rail-end i { position: absolute; inset: 0 3px; border-radius: 3px; background: linear-gradient(90deg, #cfd0cc, #f1f1ee 45%, #d6d7d3); box-shadow: 0 1px 2px rgba(20,20,18,.2), inset 0 0 0 .5px rgba(20,20,18,.15); }
 .rail-end i::before, .rail-end i::after { content: ''; position: absolute; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f4f4f2, #8e8f8b); }
@@ -163,6 +163,11 @@ ul { margin: 0; padding: 0; list-style: none; }
 .sheet-body h2 { margin: 0 0 24px; font-family: var(--display); font-size: clamp(34px, 7vw, 72px); font-weight: 400; line-height: .95; letter-spacing: -.04em; text-transform: uppercase; }
 .sheet-body p { margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3d3b36; }
 .sheet-body a { border-bottom: 1px solid var(--ink); }
+.sheet { overflow: auto; }
+.sheet-body { max-height: 100%; }
+.credits { margin: 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; color: #3d3b36; }
+.credits li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.credits b { color: var(--ink); font-weight: 600; }
 
 @media (max-width: 640px) {
   .top { padding: 0 14px; }
