@@ -17,16 +17,19 @@
   const itemsEl = $('#items');
   const focusEl = $('#focus');
   const infoEl = $('#info');
-  const arcG = $('#arcG');
+  const world = $('#world');
+  const worldRail = $('#worldRail');
+  const rail3d = $('#rail3d');
   const copy = $('#copy');
   const rangeEl = $('#range');
   const eyeSuffix = $('#eyeSuffix');
 
+  const SIDE = 72; // roupa de lado em repouso; vira de frente só com o mouse
   const HOOK = 0.055; // pivô do gancho em fração de --iw (22 / 400)
 
   let W = 0, H = 0, iw = 0, fiw = 0;
   let R = 0, cx = 0, cy = 0, stepDeg = 12, VIS = 10, narrow = false, chord = 1;
-  let cMin = 0, cMax = 0, railFocus = 0;
+  let cMin = 0, cMax = 0, railFocus = 0, arcTop = 0;
 
   /* ---------- montagem das peças ---------- */
   focusEl.hidden = false;
@@ -48,7 +51,7 @@
     return {
       i, p, el,
       cast: $('.cast', el), pivot: $('.pivot', el), sway: $('.sway', el), turn: $('.turn', el),
-      x: 0, y: 0, vx: 0, vy: 0, sc: 1, vsc: 0, tn: 90, vtn: 0, sw: 0, vsw: 0, op: 0, born: false, init: false, th: 0,
+      x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, sc: 1, vsc: 0, tn: 90, vtn: 0, sw: 0, vsw: 0, op: 0, born: false, init: false, th: 0,
     };
   });
 
@@ -78,10 +81,16 @@
     narrow = W < 760;
     VIS = narrow ? 5 : 10;
     stepDeg = 120 / VIS;
+    const footer0 = Math.max(H * 0.043, 32);
+    copy.classList.toggle('compact', H < 760);
+    arcTop = H * (narrow ? 0.2 : 0.17);
     iw = Math.min(0.3 * H, (narrow ? 0.44 : 0.19) * W);
-    R = narrow ? W * 0.62 : Math.min(W * 0.58, H * 1.0);
-    const arcTop = H * (narrow ? 0.2 : 0.2);
+    // as roupas nunca podem encostar no texto do hero
+    const copyTop = H - footer0 - H * 0.032 - copy.offsetHeight;
+    iw = Math.max(0.15 * H, Math.min(iw, (copyTop - 16 - arcTop) / 1.3));
+    R = narrow ? W * 0.62 : Math.min(W * 0.64, H * 1.05);
     cx = W / 2; cy = arcTop + R;
+    world.style.transformOrigin = worldRail.style.transformOrigin = `${cx}px ${H * 0.42}px -260px`;
     chord = R * stepDeg * RAD;
     cMin = (VIS - 1) / 2;
     cMax = Math.max(cMin, N - 1 - (VIS - 1) / 2);
@@ -95,7 +104,7 @@
     html.style.setProperty('--iw', iw + 'px');
     html.style.setProperty('--rod', rod + 'px');
     rail.style.top = railFocus + 'px';
-    buildArc(rod);
+    build3dRail(rod);
 
     cTarget = clamp(cTarget, cMin, cMax);
     c = clamp(c, cMin - 1, cMax + 1);
@@ -103,21 +112,29 @@
     sizeDust();
   }
 
-  const arcPt = (deg) => [cx + R * Math.sin(deg * RAD), cy - R * Math.cos(deg * RAD)];
+  // curva em 3D: arco no plano vertical que também recua em profundidade nas pontas
+  const bowl = (deg) => -R * 0.55 * (1 - Math.cos(deg * RAD));
+  const arcPt = (deg) => [cx + R * Math.sin(deg * RAD), cy - R * Math.cos(deg * RAD), bowl(deg)];
 
-  function buildArc(rod) {
-    const [x0, y0] = arcPt(-80);
-    const [x1, y1] = arcPt(80);
-    const d = `M${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1}`;
-    const wires = [-34, -17, 17, 34].map((deg) => {
-      const [x, y] = arcPt(deg);
-      return `<line x1="${x}" y1="${y}" x2="${x}" y2="-40" stroke="#2b2b29" stroke-opacity=".55" stroke-width="1.6"/><circle cx="${x}" cy="${y}" r="${rod * 0.75}" fill="#c9cac5" stroke="#5f605c" stroke-width="1"/>`;
-    }).join('');
-    arcG.innerHTML = `${wires}
-      <path d="${d}" fill="none" stroke="rgba(20,20,18,.28)" stroke-width="${rod + 4}" stroke-linecap="round" transform="translate(0 ${rod * 1.1})" filter="url(#soft)"/>
-      <path d="${d}" fill="none" stroke="#6f706c" stroke-width="${rod}" stroke-linecap="round"/>
-      <path d="${d}" fill="none" stroke="#cdcec9" stroke-width="${rod * 0.68}" stroke-linecap="round" transform="translate(0 ${-rod * 0.08})"/>
-      <path d="${d}" fill="none" stroke="#fbfbf8" stroke-width="${rod * 0.24}" stroke-linecap="round" transform="translate(0 ${-rod * 0.22})"/>`;
+  function build3dRail(rod) {
+    const parts = [];
+    const N3 = 84;
+    let prev = arcPt(-84);
+    for (let k = 1; k <= N3; k++) {
+      const p = arcPt(-84 + (168 * k) / N3);
+      const dx = p[0] - prev[0], dy = p[1] - prev[1], dz = p[2] - prev[2];
+      const len = Math.hypot(dx, dy, dz);
+      const phi = Math.atan2(dy, dx) / RAD;
+      const psi = -Math.asin(dz / len) / RAD;
+      const mx = (p[0] + prev[0]) / 2, my = (p[1] + prev[1]) / 2, mz = (p[2] + prev[2]) / 2;
+      parts.push(`<i class="seg3d" style="width:${(len + rod * 0.6).toFixed(1)}px;height:${rod}px;transform:translate3d(${mx.toFixed(1)}px,${my.toFixed(1)}px,${mz.toFixed(1)}px) rotateZ(${phi.toFixed(2)}deg) rotateY(${psi.toFixed(2)}deg) translate(-50%,-50%)"></i>`);
+      prev = p;
+    }
+    [-34, -17, 17, 34].forEach((deg) => {
+      const [x, y, z] = arcPt(deg);
+      parts.push(`<i class="wire3d" style="height:${(y + 60).toFixed(1)}px;transform:translate3d(${x.toFixed(1)}px,-60px,${z.toFixed(1)}px)"></i>`);
+    });
+    rail3d.innerHTML = parts.join('');
   }
 
   function placeInfo() {
@@ -150,8 +167,9 @@
     pm.x += (pm.tx - pm.x) * Math.min(1, dt * 4);
     pm.y += (pm.ty - pm.y) * Math.min(1, dt * 4);
     fb += ((inFocus ? 0 : 1) - fb) * Math.min(1, dt * 6);
-    const ox = pm.x * 16 * fb, oy = pm.y * 8 * fb;
-    arcG.setAttribute('transform', `translate(${ox.toFixed(2)} ${oy.toFixed(2)})`);
+    const ox = 0, oy = 0;
+    world.style.transform = worldRail.style.transform = `rotateY(${(pm.x * 7 * fb).toFixed(3)}deg) rotateX(${(-pm.y * 3.5 * fb).toFixed(3)}deg)`;
+    rail3d.style.setProperty('--ro', fb.toFixed(3));
     hero.style.setProperty('--lx', (50 + pm.x * 24).toFixed(1) + '%');
     hero.style.setProperty('--ly', (14 + pm.y * 10).toFixed(1) + '%');
 
@@ -173,15 +191,16 @@
       const ath = Math.abs(th);
       let tx = cx + R * Math.sin(th * RAD) + ox;
       let ty = cy - R * Math.cos(th * RAD) + oy;
-      let ts = 1 - 0.3 * Math.min(1, ath / 66) ** 1.4;
-      let tt = 78 * Math.tanh(th / 20);
+      let tz = bowl(th);
+      let ts = 1;
+      let tt = SIDE;
       let to = clamp((67 - ath) / 10, 0, 1);
       let wobble = reduce ? 0 : Math.sin(t * 0.9 + i * 1.7) * 0.7 + Math.sin(t * 0.37 + i) * 0.4;
 
-      if (!inFocus && i === hover) { tt *= 0.22; ts *= 1.07; }
+      if (!inFocus && i === hover) { tt = 0; ts = 1.04; tz += 150; }
 
       if (inFocus) {
-        if (sel) { tx = W / 2; ty = railFocus; ts = fiw / iw; tt = manualTurn ?? faceTurnTarget; wobble *= 0.4; to = 1; }
+        if (sel) { tx = W / 2; ty = railFocus; tz = 0; ts = fiw / iw; tt = manualTurn ?? faceTurnTarget; wobble *= 0.4; to = 1; }
         else { to = 0; tx += (th < 0 ? -1 : 1) * 40; }
       }
 
@@ -193,10 +212,11 @@
           it.vtn = reduce ? 0 : -120;
         } else { to = 0; }
       }
-      if (!it.init) { it.init = true; it.x = tx; it.y = ty - H * 0.55; it.tn = tt + 40; }
+      if (!it.init) { it.init = true; it.x = tx; it.y = ty - H * 0.55; it.z = tz; it.tn = tt + 40; }
 
       [it.x, it.vx] = spring(it.x, it.vx, tx, sel ? 130 : 240, sel ? 18 : 26, dt);
       [it.y, it.vy] = spring(it.y, it.vy, ty, sel ? 130 : 200, sel ? 18 : 24, dt);
+      [it.z, it.vz] = spring(it.z, it.vz, tz, 170, 22, dt);
       [it.sc, it.vsc] = spring(it.sc, it.vsc, ts, 130, 19, dt);
       [it.tn, it.vtn] = sel && manualTurn !== null ? [tt, 0] : spring(it.tn, it.vtn, tt, sel ? 110 : 80, sel ? 14 : 12, dt);
       const swayTarget = clamp(-rackVel * 0.0042, -16, 16) * (sel ? 0.4 : 1) + wobble;
@@ -204,7 +224,7 @@
       it.op += (to - it.op) * Math.min(1, dt * (to > it.op ? 8 : 12));
       it.th = th;
 
-      it.pivot.style.transform = `translate3d(${(it.x - iw / 2).toFixed(2)}px,${(it.y - HOOK * iw).toFixed(2)}px,0) scale(${it.sc.toFixed(4)})`;
+      it.pivot.style.transform = `translate3d(${(it.x - iw / 2).toFixed(2)}px,${(it.y - HOOK * iw).toFixed(2)}px,${it.z.toFixed(1)}px) scale(${it.sc.toFixed(4)})`;
       it.pivot.style.opacity = it.op.toFixed(3);
       it.sway.style.transform = `rotate(${it.sw.toFixed(3)}deg)`;
       it.turn.style.transform = `rotateY(${it.tn.toFixed(2)}deg)`;
@@ -217,7 +237,7 @@
       it.cast.style.width = cw + 'px';
       it.cast.style.height = iw * 1.05 * it.sc + 'px';
       it.cast.style.opacity = (0.1 * it.op).toFixed(3);
-      it.cast.style.transform = `translate3d(${(it.x - cw / 2 + iw * 0.07 * it.sc - it.sw * 1.2).toFixed(1)}px,${(it.y + iw * 0.12 * it.sc).toFixed(1)}px,0)`;
+      it.cast.style.transform = `translate3d(${(it.x - cw / 2 + iw * 0.07 * it.sc - it.sw * 1.2).toFixed(1)}px,${(it.y + iw * 0.12 * it.sc).toFixed(1)}px,${(it.z - 40).toFixed(1)}px)`;
 
       if (sel !== it.isSel) { it.isSel = sel; it.el.classList.toggle('sel', sel); }
       it.el.style.zIndex = sel ? 80 : i === hover ? 60 : Math.round(40 - (ath / stepDeg) * 3);
@@ -234,14 +254,16 @@
 
   function pick(px, py) {
     if (focus >= 0) return -1;
+    const hr = hero.getBoundingClientRect();
+    const X = px + hr.left, Y = py + hr.top;
     let best = -1, bz = -Infinity;
     for (const it of items) {
       if (it.op < 0.3) continue;
-      const s = it.sc;
-      const half = iw * s * (0.46 * Math.abs(Math.cos(it.tn * RAD)) + 0.1);
-      if (Math.abs(px - it.x) > half) continue;
-      if (py < it.y - 12 || py > it.y + iw * 1.22 * s) continue;
-      const z = -Math.abs(it.th) + (it.i === hover ? 5 : 0);
+      const r = it.pivot.getBoundingClientRect();
+      const half = r.width * (0.42 * Math.abs(Math.cos(it.tn * RAD)) + 0.1);
+      if (Math.abs(X - (r.left + r.width / 2)) > half) continue;
+      if (Y < r.top + r.height * 0.02 || Y > r.top + r.height * 0.96) continue;
+      const z = it.z + (it.i === hover ? 40 : 0);
       if (z > bz) { bz = z; best = it.i; }
     }
     return best;
@@ -602,6 +624,7 @@
   /* ---------- início ---------- */
   addEventListener('resize', layout);
   layout();
+  if (document.fonts) document.fonts.ready.then(layout);
   c = cTarget = cMin; // começa com as 10 primeiras peças à vista
   renderBag();
   window.scrollTo(0, 0);

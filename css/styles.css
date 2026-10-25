@@ -47,8 +47,13 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .stage { position: absolute; inset: 0; touch-action: pan-y; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
 .stage.pointing { cursor: pointer; }
-.arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 5; pointer-events: none; transition: opacity .6s; }
-.is-focus .arc { opacity: 0; }
+/* cena 3D: perspectiva real; o arco curva em profundidade e a câmera acompanha o mouse */
+.stage { perspective: 1400px; perspective-origin: 50% 38%; }
+.world { position: absolute; inset: 0; transform-style: preserve-3d; }
+.rail3d, .items { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+.seg3d { position: absolute; left: 0; top: 0; border-radius: 99px; opacity: var(--ro, 1);
+  background: linear-gradient(#6d6e6a 0%, #bfc0bb 20%, #fbfbf8 40%, #d9dad6 58%, #8f908c 82%, #585955 100%); }
+.wire3d { position: absolute; left: 0; top: 0; width: 1.6px; background: #2b2b29; opacity: calc(.55 * var(--ro, 1)); }
 
 .rail { position: absolute; z-index: 5; left: -2%; width: 104%; height: var(--rod, 9px); transform: translateY(-50%); opacity: 0; transition: opacity .6s; pointer-events: none; }
 .is-focus .rail { opacity: 1; }
@@ -59,8 +64,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   box-shadow: 0 6px 7px -3px rgba(20,20,18,.28); }
 
 /* ---------- peças ---------- */
-.items { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-.item { position: absolute; inset: 0; }
+.item { position: absolute; inset: 0; transform-style: preserve-3d; }
 .cast { position: absolute; left: 0; top: 0; border-radius: 40% 40% 46% 46%; background: rgba(28,24,14,.9); filter: blur(16px); will-change: transform, opacity; }
 .pivot { position: absolute; left: 0; top: 0; width: var(--iw); height: calc(var(--iw) * 1.3); transform-origin: 50% 4.23%; will-change: transform, opacity; }
 .sway { position: absolute; inset: 0; transform-origin: 50% 4.23%; perspective: 1100px; perspective-origin: 50% 40%; }
@@ -89,6 +93,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .eyebrow em { font-style: normal; }
 .headline { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 4.6vw, 64px); line-height: .94; letter-spacing: -.04em; text-transform: uppercase; }
 .headline span { display: block; }
+.copy.compact .lede, .copy.compact .cue { display: none; }
+.copy.compact .headline { font-size: clamp(26px, min(4.6vw, 7.2vh), 64px); }
+.copy.compact .eyebrow { margin-bottom: 8px; }
 .lede { margin: 18px auto 0; max-width: 480px; font-size: 14px; line-height: 1.6; color: #4a4841; }
 .cue { display: inline-flex; align-items: center; gap: 12px; margin-top: 22px; font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
 .cue i { position: relative; width: 1px; height: 30px; background: rgba(18,17,15,.25); overflow: hidden; }
