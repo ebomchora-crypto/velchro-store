@@ -47,7 +47,7 @@ renderer.outputColorSpace = T.SRGBColorSpace;
 renderer.toneMapping = T.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.18;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = LOW ? T.PCFSoftShadowMap : T.VSMShadowMap;
+renderer.shadowMap.type = LOW ? T.PCFShadowMap : T.VSMShadowMap;
 renderer.shadowMap.autoUpdate = !LOW;
 
 const scene = new T.Scene();
@@ -104,6 +104,69 @@ function grayTexture(tex) {
   return t;
 }
 
+/* Oclusão ambiente "assada": vales (dobras, axilas, cavas, bainhas) escurecem, partes salientes ficam claras.
+   Usa a curvatura (Laplaciano) sobre vértices fundidos por posição, para não aparecer costura nas emendas de UV. */
+function bakeAO(geo, strength = 1) {
+  const P = geo.attributes.position, Nn = geo.attributes.normal, idx = geo.index.array, n = P.count;
+  const grp = new Int32Array(n), keyMap = new Map();
+  let g = 0;
+  for (let i = 0; i < n; i++) {
+    const k = `${Math.round(P.getX(i) * 4000)},${Math.round(P.getY(i) * 4000)},${Math.round(P.getZ(i) * 4000)}`;
+    let id = keyMap.get(k);
+    if (id === undefined) { id = g++; keyMap.set(k, id); }
+    grp[i] = id;
+  }
+  const px = new Float32Array(g), py = new Float32Array(g), pz = new Float32Array(g);
+  const nx = new Float32Array(g), ny = new Float32Array(g), nz = new Float32Array(g);
+  for (let i = 0; i < n; i++) {
+    const k = grp[i];
+    px[k] = P.getX(i); py[k] = P.getY(i); pz[k] = P.getZ(i);
+    nx[k] += Nn.getX(i); ny[k] += Nn.getY(i); nz[k] += Nn.getZ(i);
+  }
+  for (let k = 0; k < g; k++) { const l = Math.hypot(nx[k], ny[k], nz[k]) || 1; nx[k] /= l; ny[k] /= l; nz[k] /= l; }
+  const sx = new Float32Array(g), sy = new Float32Array(g), sz = new Float32Array(g), cnt = new Float32Array(g);
+  const edge = (a, b) => { sx[a] += px[b]; sy[a] += py[b]; sz[a] += pz[b]; cnt[a]++; };
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = grp[idx[t]], b = grp[idx[t + 1]], c = grp[idx[t + 2]];
+    edge(a, b); edge(a, c); edge(b, a); edge(b, c); edge(c, a); edge(c, b);
+  }
+  let cav = new Float32Array(g);
+  for (let k = 0; k < g; k++) {
+    if (!cnt[k]) continue;
+    cav[k] = ((sx[k] / cnt[k] - px[k]) * nx[k] + (sy[k] / cnt[k] - py[k]) * ny[k] + (sz[k] / cnt[k] - pz[k]) * nz[k]);
+  }
+  // suaviza o mapa de cavidade pela malha
+  for (let pass = 0; pass < 12; pass++) {
+    const acc = new Float32Array(g), c2 = new Float32Array(g);
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = grp[idx[t]], b = grp[idx[t + 1]], c = grp[idx[t + 2]];
+      acc[a] += cav[b] + cav[c]; acc[b] += cav[a] + cav[c]; acc[c] += cav[a] + cav[b];
+      c2[a] += 2; c2[b] += 2; c2[c] += 2;
+    }
+    const next = new Float32Array(g);
+    for (let k = 0; k < g; k++) next[k] = c2[k] ? cav[k] * 0.4 + (acc[k] / c2[k]) * 0.6 : cav[k];
+    cav = next;
+  }
+  let mean = 0, varr = 0;
+  for (let k = 0; k < g; k++) mean += cav[k];
+  mean /= g;
+  for (let k = 0; k < g; k++) varr += (cav[k] - mean) ** 2;
+  const sd = Math.sqrt(varr / g) || 1e-6;
+  geo.computeBoundingBox();
+  const minY = geo.boundingBox.min.y, spanY = geo.boundingBox.max.y - minY;
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const z = (cav[grp[i]] - mean) / sd;                 // >0 = vale
+    let ao = 1 - strength * (0.17 * Math.max(z, 0) + 0.05 * Math.max(z - 1.2, 0));
+    ao += 0.05 * Math.min(Math.max(-z, 0), 1.5);          // saliências recebem um pouco mais de luz
+    const hh = (P.getY(i) - minY) / spanY;
+    ao *= 0.9 + 0.1 * hh;                                  // barra mais escura que o ombro
+    ao = Math.min(1.05, Math.max(0.66, ao));
+    col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = ao;
+  }
+  geo.setAttribute('color', new T.BufferAttribute(col, 3));
+}
+
 const MODELS = {};
 async function loadModels() {
   const loader = new T.GLTFLoader();
@@ -116,6 +179,7 @@ async function loadModels() {
     const s = m.h / size.y;
     const map = mesh.material.map;
     if (map) map.anisotropy = LOW ? 2 : 8;
+    bakeAO(geo);
     MODELS[key] = { geo, map, normal: mesh.material.normalMap, s, bb, ctr, size: size.multiplyScalar(s), cfg: m, gray: null };
   }));
 }
@@ -147,7 +211,40 @@ function tagTexture(p) {
 }
 
 /* monta uma peça pendurada: gancho, cabide/grampo e modelo 3D. Origem = ponto do trilho. */
-function buildItem(p) {
+const CLOTH_TIME = { value: 0 };
+const CLOTH_GLSL_COMMON = `
+uniform float uTime, uAmp, uMin, uMax, uPh;
+float clothW(vec3 p, out float dwx, out float dwy) {
+  float a = p.x * 9.0 + uTime * 1.15 + uPh;
+  float b = p.y * 7.0 - uTime * 0.8 + uPh * 1.7;
+  float c = p.z * 11.0 + uTime * 0.6;
+  dwx = cos(a) * 4.5;
+  dwy = cos(b + sin(c)) * 3.5;
+  return sin(a) * 0.5 + sin(b + sin(c)) * 0.5;
+}
+float clothWeight(float y) { return smoothstep(0.0, 0.82, 1.0 - clamp((y - uMin) / (uMax - uMin), 0.0, 1.0)); }`;
+
+/* tecido vivo: ondas suaves que crescem do ombro para a barra, e a normal acompanha (a luz "passeia" pelas dobras) */
+function clothify(mat, U) {
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>\n${CLOTH_GLSL_COMMON}`)
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+        { float dx, dy; clothW(position, dx, dy); float wg = clothWeight(position.y);
+          objectNormal = normalize(objectNormal - vec3(dx, dy, 0.0) * uAmp * wg * 2.4); }`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        { float dx, dy; float w = clothW(position, dx, dy); float wg = clothWeight(position.y);
+          // mesma direção para as camadas de fora e de dentro do tecido (deslocar pela normal as cruzaria e abriria buracos)
+          transformed.z += w * uAmp * wg * 1.1;
+          transformed.x += w * uAmp * wg * 0.35;
+          transformed.x += sin(uTime * 0.7 + uPh + (position.y - uMin) * 3.0) * uAmp * 0.55 * wg;
+          transformed.z += sin(uTime * 0.9 + uPh * 1.3 + position.x * 2.0) * uAmp * 0.5 * wg; }`);
+  };
+  mat.customProgramCacheKey = () => 'cloth-v2';
+}
+
+function buildItem(p, still = false) {
   const M = MODELS[p.model];
   const mats = [];
   const own = (m) => { const c = m.clone(); mats.push(c); return c; };
@@ -156,7 +253,12 @@ function buildItem(p) {
   const turn = new T.Group(); sway.add(turn);
 
   const h = M.cfg.h;
-  const gm = new T.MeshStandardMaterial({ map: M.map, normalMap: M.normal, roughness: 0.85, metalness: 0, side: T.DoubleSide });
+  const U = { uTime: CLOTH_TIME, uAmp: { value: still ? 0 : 0.011 }, uMin: { value: M.bb.min.y }, uMax: { value: M.bb.max.y }, uPh: { value: Math.random() * 12 } };
+  const clothProps = { map: M.map, normalMap: M.normal, vertexColors: true, roughness: 0.88, metalness: 0, side: T.DoubleSide };
+  const gm = LOW
+    ? new T.MeshStandardMaterial(clothProps)
+    : new T.MeshPhysicalMaterial({ ...clothProps, sheen: 0.9, sheenRoughness: 0.5, sheenColor: new T.Color(0xffffff) });
+  clothify(gm, U);
   if (p.gray) { M.gray = M.gray || grayTexture(M.map); gm.map = M.gray; }
   if (p.color) gm.color.set(p.color);
   mats.push(gm);
@@ -196,7 +298,7 @@ function buildItem(p) {
   const proxy = new T.Mesh(new T.BoxGeometry(M.size.x * 1.05, h + 0.12, M.size.z * 1.1), new T.MeshBasicMaterial({ visible: false }));
   proxy.position.y = TOP - h / 2 + 0.03; turn.add(proxy);
 
-  return { root, sway, turn, proxy, tag, tagMat, mats, h, total: h + 0.115 };
+  return { root, sway, turn, proxy, tag, tagMat, mats, h, total: h + 0.115, U };
 }
 
 let items = [];
@@ -329,6 +431,7 @@ function frame(now) {
   const raw = now - last;
   const dt = clamp(raw / 1000, 0.001, 0.033);
   last = now;
+  CLOTH_TIME.value = reduce ? 0 : now / 1000;
   adapt(raw, now);
   if (LOW) renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0; // sombra a cada 2 quadros no celular
   const t = now / 1000;
@@ -408,6 +511,7 @@ function frame(now) {
     it.th = th;
 
     const vis = it.op > 0.01;
+    it.U.uAmp.value = 0.011 * (sel ? 0.8 : 1) * (1 + Math.min(2.2, Math.abs(rackVel) * 0.0022));
     it.root.visible = vis;
     if (!vis) continue;
 
@@ -667,7 +771,7 @@ function thumbOf(p, big = false) {
     thumbCam = new T.OrthographicCamera(-0.53, 0.53, 0.6, -0.6, 0.1, 10); thumbCam.position.set(0, 0, 4);
   }
   thumbR.setSize(big ? 480 : 176, big ? 545 : 200, false);
-  const b = buildItem(p);
+  const b = buildItem(p, true);
   b.mats.forEach((m) => { m.opacity = 1; m.transparent = false; });
   b.tagMat.opacity = 0;
   b.turn.rotation.y = big ? 0.42 : 0.28;
