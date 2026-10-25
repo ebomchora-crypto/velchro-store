@@ -249,7 +249,7 @@ function layout() {
   copy.classList.toggle('compact', H < 760);
   arcTop = H * (narrow ? 0.25 : 0.27);
   iw = Math.min(0.32 * H, (narrow ? 0.5 : 0.215) * W);
-  const copyTop = H - 52 - H * 0.032 - copy.offsetHeight;
+  const copyTop = H - 46 - H * 0.032 - copy.offsetHeight;
   iw = Math.max(0.15 * H, Math.min(iw, (copyTop - 16 - arcTop) / 1.3));
   ppm = iw * PPM;
   R = narrow ? W * 0.62 : Math.min(W * 0.64, H * 1.05);
@@ -281,7 +281,7 @@ function layout() {
 
 const focusIw = (p) => {
   const footer = Math.max(H * 0.043, 32);
-  const avail = H - railFocus - 52 - 24 - 300 - 30;
+  const avail = H - railFocus - 46 - 24 - 290 - 30;
   return Math.max(150, Math.min(0.45 * H, 0.7 * W, avail / (((V.models[p.model].h + 0.115) * PPM))));
 };
 
