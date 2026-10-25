@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Velchro — Loja de Roupas</title>
-<meta name="description" content="Velchro: streetwear pendurado como numa loja de verdade. Arraste o cabideiro, escolha a peça, prove de frente e de costas.">
+<meta name="description" content="Velchro: a loja inteira num cabideiro em meia-lua. Role sobre as peças, passe o mouse, clique para provar de perto.">
 <meta property="og:title" content="Velchro">
-<meta property="og:description" content="Streetwear pendurado como numa loja de verdade.">
+<meta property="og:description" content="A loja inteira num cabideiro. Escolha com a mão.">
 <meta name="theme-color" content="#e8e4da">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,33 +47,40 @@
   </defs>
 </svg>
 
-<div class="wall" id="wall">
-  <header class="top">
-    <nav class="top-l"><a href="#sobre" data-sheet="sobre" class="nav">Sobre</a></nav>
-    <a class="logo" href="#" aria-label="Velchro — início">Velchro<span>®</span></a>
-    <nav class="top-r">
-      <a href="#contato" data-sheet="contato" class="nav" id="navContato">Contato</a>
-      <button class="nav" id="navBag" type="button">Sacola <span id="bagCount">(0)</span></button>
-      <button class="nav close" id="navClose" type="button" aria-label="Fechar detalhe" tabindex="-1">Fechar <span aria-hidden="true">✕</span></button>
-    </nav>
-  </header>
+<header class="top">
+  <nav class="top-l"><a href="#sobre" data-sheet="sobre" class="nav">Sobre</a></nav>
+  <a class="logo" href="#" aria-label="Velchro — início">Velchro<span>®</span></a>
+  <nav class="top-r">
+    <a href="#contato" data-sheet="contato" class="nav" id="navContato">Contato</a>
+    <button class="nav" id="navBag" type="button">Sacola <span id="bagCount">(0)</span></button>
+    <button class="nav close" id="navClose" type="button" aria-label="Fechar detalhe" tabindex="-1">Fechar <span aria-hidden="true">✕</span></button>
+  </nav>
+</header>
 
-  <main>
-    <h1 class="sr">Velchro</h1>
+<main>
+  <section class="hero" id="hero">
+    <canvas class="dust" id="dust" aria-hidden="true"></canvas>
+    <div class="light" aria-hidden="true"></div>
+
     <div class="stage" id="stage">
-      <div class="light" aria-hidden="true"></div>
+      <svg class="arc" id="arc" aria-hidden="true"><g id="arcG"></g></svg>
       <div class="rail" id="rail" aria-hidden="true">
         <div class="rail-tube"></div>
-        <div class="rail-end l"><i></i></div>
-        <div class="rail-end r"><i></i></div>
       </div>
       <div class="items" id="items"></div>
     </div>
 
+    <h1 class="sr">Velchro</h1>
     <ul class="sr-list" id="srList"></ul>
 
-    <p class="hover-name" id="hoverName" aria-hidden="true"><b></b><span></span></p>
-    <p class="hint" id="hint">Arraste para os lados · clique para provar</p>
+    <div class="copy" id="copy">
+      <p class="eyebrow"><span id="range">01–10 / 24</span><em id="eyeSuffix"> · Drop 01</em></p>
+      <h2 class="headline"><span>A loja inteira</span><span>num cabideiro.</span></h2>
+      <p class="lede">Role sobre as peças, passe o mouse para trazê-las à frente e clique para provar de perto. Do jeito que se escolhe numa loja de verdade.</p>
+      <a class="cue" href="#manifesto" id="cue"><span>Continuar</span><i aria-hidden="true"></i></a>
+    </div>
+
+    <p class="hint" id="hint"><span class="hint-d">Role sobre as peças</span><span class="hint-m">Arraste para os lados</span></p>
 
     <section class="focus" id="focus" aria-live="polite" hidden>
       <button class="arrow prev" id="prev" type="button" aria-label="Peça anterior">‹</button>
@@ -90,16 +97,67 @@
         <button class="cta" id="cta" type="button">Escolha um tamanho</button>
       </div>
     </section>
-  </main>
 
-  <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
-  <div class="toast" id="toast" role="status"></div>
-</div>
+    <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+  </section>
+
+  <section class="sec manifesto" id="manifesto">
+    <p class="eyebrow reveal">Manifesto</p>
+    <p class="scrub" id="scrub">Roupa boa não se escolhe num catálogo. Escolhe-se com a mão, no cabide, sob a luz da loja. A Velchro é essa sensação, aberta a qualquer hora, em qualquer lugar.</p>
+  </section>
+
+  <section class="sec pillars">
+    <article class="pillar reveal">
+      <span class="num">01</span>
+      <h3>Peça de verdade</h3>
+      <p>Cada item aparece como ele é: foto real, no cabide, sem filtro e sem maquiagem. O que você vê é o que chega.</p>
+    </article>
+    <article class="pillar reveal">
+      <span class="num">02</span>
+      <h3>Tiragem curta</h3>
+      <p>Poucas unidades por modelo. Quando a peça acaba, ela sai do cabideiro e não volta. Sem estoque infinito, sem repetição.</p>
+    </article>
+    <article class="pillar reveal">
+      <span class="num">03</span>
+      <h3>Do cabide à sua porta</h3>
+      <p>O pedido se fecha pelo WhatsApp, direto com a loja. Frete, pagamento e prazo combinados sem burocracia e sem robô.</p>
+    </article>
+  </section>
+
+  <section class="sec steps dark">
+    <p class="eyebrow reveal">Como provar</p>
+    <ol class="step-list">
+      <li class="reveal"><b>Role</b><span>Gire a roda do mouse sobre o cabideiro, ou arraste no celular. A meia-lua se move e traz as próximas peças.</span></li>
+      <li class="reveal"><b>Aproxime</b><span>Passe o mouse numa peça: ela vira de frente e os cabides vizinhos abrem espaço para você enxergar.</span></li>
+      <li class="reveal"><b>Clique</b><span>A peça vem para o centro, com preço, tamanhos e sacola. As setas levam para a próxima.</span></li>
+    </ol>
+    <div class="band" aria-hidden="true"><div class="band-track" id="band"></div></div>
+  </section>
+</main>
+
+<footer class="foot dark">
+  <div class="foot-grid">
+    <div>
+      <p class="eyebrow">Fale com a gente</p>
+      <p class="foot-big"><a href="mailto:contato@velchro.com">contato@velchro.com</a></p>
+      <p class="foot-small">Segunda a sábado, das 10h às 19h.</p>
+    </div>
+    <div class="foot-links">
+      <a href="#sobre" data-sheet="sobre">Sobre</a>
+      <a href="#contato" data-sheet="contato">Contato</a>
+      <a href="#creditos" data-sheet="creditos">Créditos das fotos</a>
+      <a href="#hero" id="toTop">Voltar ao cabideiro ↑</a>
+    </div>
+  </div>
+  <p class="foot-mark" aria-hidden="true">VELCHRO</p>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
 
 <aside class="drawer" id="drawer" aria-label="Sacola" aria-hidden="true">
   <div class="drawer-head"><h2>Sacola</h2><button type="button" id="drawerClose" aria-label="Fechar sacola">✕</button></div>
   <ul class="bag-list" id="bagList"></ul>
-  <p class="bag-empty" id="bagEmpty">Sua sacola está vazia.<br>Arraste o cabideiro e escolha uma peça.</p>
+  <p class="bag-empty" id="bagEmpty">Sua sacola está vazia.<br>Role o cabideiro e escolha uma peça.</p>
   <div class="drawer-foot">
     <div class="sub"><span>Subtotal</span><b id="bagTotal">R$ 0</b></div>
     <button class="cta solid" id="checkout" type="button">Finalizar pelo WhatsApp</button>
