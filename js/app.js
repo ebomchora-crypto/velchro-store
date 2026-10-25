@@ -21,6 +21,11 @@ const copy = $('#copy');
 const rangeEl = $('#range');
 const eyeSuffix = $('#eyeSuffix');
 
+// celulares e máquinas modestas: modelos leves, resolução menor e sombras mais baratas
+const LOW = matchMedia('(pointer: coarse)').matches || innerWidth < 760
+  || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+let pr = Math.min(LOW ? 1.5 : 2, devicePixelRatio || 1);  // resolução de render (ajustada sozinha se o aparelho engasgar)
+
 const SIDE = 72;     // roupa de lado em repouso; vira de frente só com o mouse
 const TOP = -0.115;  // topo da peça abaixo do trilho (m)
 const PPM = 1.16;    // px por metro, em múltiplos de iw
@@ -31,23 +36,36 @@ let stepDeg = 12, VIS = 10, narrow = false, chord = 1, cMin = 0, cMax = 0, railF
 /* ======================= cena 3D ======================= */
 let renderer;
 try {
-  renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer = new T.WebGLRenderer({ canvas, antialias: !LOW, alpha: true, powerPreference: 'high-performance' });
 } catch (err) {
   hero.insertAdjacentHTML('beforeend', '<p class="nogl">Seu navegador não conseguiu abrir o 3D. Tente atualizar o Chrome, Edge ou Safari.</p>');
   throw err;
 }
-renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+renderer.setPixelRatio(pr);
 renderer.outputColorSpace = T.SRGBColorSpace;
 renderer.toneMapping = T.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = LOW ? T.PCFSoftShadowMap : T.VSMShadowMap;
+renderer.shadowMap.autoUpdate = !LOW;
 
 const scene = new T.Scene();
 const pmrem = new T.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new T.RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.8;
 const keyLight = new T.DirectionalLight(0xfff0d8, 1.7);
-keyLight.position.set(-380, 620, 760);
-scene.add(keyLight);
+const LIGHT_DIR = new T.Vector3(-0.13, 0.24, 1).normalize();
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(LOW ? 512 : 1024, LOW ? 512 : 1024);
+keyLight.shadow.radius = LOW ? 5 : 8;
+keyLight.shadow.blurSamples = LOW ? 6 : 12;
+keyLight.shadow.bias = -0.0005;
+keyLight.shadow.camera.near = 300;
+keyLight.shadow.camera.far = 3000;
+keyLight.target.position.set(0, 0, -150);
+scene.add(keyLight, keyLight.target);
+const wall = new T.Mesh(new T.PlaneGeometry(1, 1), new T.ShadowMaterial({ color: 0x2a2216, opacity: 0.3 }));
+wall.receiveShadow = true;
 const fillLight = new T.DirectionalLight(0xdfe8ff, 0.5);
 fillLight.position.set(500, 120, 500);
 scene.add(fillLight);
@@ -56,6 +74,7 @@ const camera = new T.PerspectiveCamera(30, 1, 50, 6000);
 const CAM_D = 1400;
 const rig = new T.Group(); rig.position.set(0, 0, -260); scene.add(rig);   // órbita da câmera em torno do meio da cena
 const world = new T.Group(); world.position.set(0, 0, 260); rig.add(world);
+world.add(wall);
 
 /* ---------- materiais e modelos ---------- */
 const metalMat = new T.MeshStandardMaterial({ color: 0xdadbd6, metalness: 1, roughness: 0.26 });
@@ -80,7 +99,7 @@ function grayTexture(tex) {
   }
   g.putImageData(d, 0, 0);
   const t = new T.CanvasTexture(c);
-  t.flipY = false; t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4;
+  t.flipY = false; t.colorSpace = T.SRGBColorSpace; t.anisotropy = LOW ? 1 : 4;
   return t;
 }
 
@@ -88,14 +107,14 @@ const MODELS = {};
 async function loadModels() {
   const loader = new T.GLTFLoader();
   await Promise.all(Object.entries(V.models).map(async ([key, m]) => {
-    const g = await loader.loadAsync(m.file);
+    const g = await loader.loadAsync(LOW && m.fileLow ? m.fileLow : m.file);
     const mesh = g.scene.getObjectByProperty('isMesh', true);
     const geo = mesh.geometry;
     geo.computeBoundingBox();
     const bb = geo.boundingBox, size = bb.getSize(new T.Vector3()), ctr = bb.getCenter(new T.Vector3());
     const s = m.h / size.y;
     const map = mesh.material.map;
-    if (map) map.anisotropy = 4;
+    if (map) map.anisotropy = LOW ? 1 : 4;
     MODELS[key] = { geo, map, normal: mesh.material.normalMap, s, bb, ctr, size: size.multiplyScalar(s), cfg: m, gray: null };
   }));
 }
@@ -142,6 +161,7 @@ function buildItem(p) {
   mats.push(gm);
   const garment = new T.Mesh(M.geo, gm);
   garment.scale.setScalar(M.s);
+  garment.castShadow = true;
   garment.position.set(-M.ctr.x * M.s, TOP - M.bb.max.y * M.s, -M.ctr.z * M.s);
   turn.add(garment);
 
@@ -178,24 +198,14 @@ function buildItem(p) {
   return { root, sway, turn, proxy, tag, tagMat, mats, h, total: h + 0.115 };
 }
 
-const blob = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 4, 64, 64, 62);
-  gr.addColorStop(0, 'rgba(30,26,16,.9)'); gr.addColorStop(1, 'rgba(30,26,16,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-  return new T.CanvasTexture(c);
-})();
-
 let items = [];
 function makeItems() {
   items = P.map((p, i) => {
     const b = buildItem(p);
     world.add(b.root);
-    const shadow = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: blob, transparent: true, opacity: 0, depthWrite: false }));
-    world.add(shadow);
     b.proxy.userData.i = i;
     b.root.visible = false;
-    return { i, p, ...b, shadow, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, sc: 1, vsc: 0, tn: 90, vtn: 0, sw: 0, vsw: 0, op: 0, born: false, init: false, th: 0 };
+    return { i, p, ...b, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, sc: 1, vsc: 0, tn: 90, vtn: 0, sw: 0, vsw: 0, op: 0, born: false, init: false, th: 0 };
   });
 }
 
@@ -249,6 +259,12 @@ function layout() {
   railFocus = Math.max(H * 0.095, 70);
   rodPx = Math.max(8, iw * 0.034);
 
+  const wallZ = -(R * 0.55 * (1 - Math.cos(54 * RAD))) - 80;
+  wall.scale.set(W * 3, H * 3, 1);
+  wall.position.set(0, 0, wallZ);
+  keyLight.position.copy(keyLight.target.position).addScaledVector(LIGHT_DIR, 1400);
+  const sc = keyLight.shadow.camera, ext = Math.max(W, H) * 0.85;
+  sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.updateProjectionMatrix();
   renderer.setSize(W, H, false);
   camera.aspect = W / H;
   camera.fov = (2 * Math.atan(H / 2 / CAM_D)) / RAD;
@@ -291,11 +307,29 @@ const spring = (pos, vel, target, k, damp, dt) => {
   return [pos + vel * dt, vel];
 };
 
+const ADAPT = !location.search.includes('noadapt');
+let aSum = 0, aN = 0, frameNo = 0;
+function applyPR() { renderer.setPixelRatio(pr); renderer.setSize(W, H, false); }
+// se o aparelho não sustenta ~40 fps, baixa a resolução; depois, desliga as sombras
+function adapt(raw, now) {
+  if (!ADAPT || now < 3000 || raw > 250 || document.hidden) return;
+  aSum += raw;
+  if (++aN < 60) return;
+  const avg = aSum / aN; aSum = 0; aN = 0;
+  if (avg <= 24) return;
+  if (pr > 0.76) { pr = Math.max(0.75, pr * 0.8); applyPR(); }
+  else if (keyLight.castShadow) { keyLight.castShadow = false; wall.visible = false; }
+}
+
 let last = performance.now();
+let lastLx = -99, lastLy = -99;
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = clamp((now - last) / 1000, 0.001, 0.033);
+  const raw = now - last;
+  const dt = clamp(raw / 1000, 0.001, 0.033);
   last = now;
+  adapt(raw, now);
+  if (LOW) renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0; // sombra a cada 2 quadros no celular
   const t = now / 1000;
   const inFocus = focus >= 0;
   if (window.scrollY > H * 1.15 && !inFocus) return; // fora da tela: não gasta GPU
@@ -310,8 +344,13 @@ function frame(now) {
   fb += ((inFocus ? 0 : 1) - fb) * Math.min(1, dt * 6);
   rig.rotation.y = pm.x * 0.12 * fb;
   rig.rotation.x = -pm.y * 0.06 * fb;
-  hero.style.setProperty('--lx', (50 + pm.x * 24).toFixed(1) + '%');
-  hero.style.setProperty('--ly', (14 + pm.y * 10).toFixed(1) + '%');
+  if (!LOW) { // mexer a luz de fundo a cada quadro repinta o gradiente: só no desktop
+    const lx = 50 + pm.x * 24, ly = 14 + pm.y * 10;
+    if (Math.abs(lx - lastLx) > 0.25 || Math.abs(ly - lastLy) > 0.25) {
+      hero.style.setProperty('--lx', lx.toFixed(1) + '%'); hero.style.setProperty('--ly', ly.toFixed(1) + '%');
+      lastLx = lx; lastLy = ly;
+    }
+  }
 
   railArcMat.opacity = fb; railArcMat.visible = fb > 0.02;
   railGroup.userData.wireMat.opacity = 0.55 * fb;
@@ -368,7 +407,7 @@ function frame(now) {
     it.th = th;
 
     const vis = it.op > 0.01;
-    it.root.visible = vis; it.shadow.visible = vis;
+    it.root.visible = vis;
     if (!vis) continue;
 
     const [wx, wy] = toW(it.x, it.y);
@@ -381,12 +420,6 @@ function frame(now) {
     const solid = it.op > 0.995;
     for (const m of it.mats) { m.opacity = m === it.tagMat ? it.op * (sel ? 1 : 0) : it.op; m.transparent = !solid || m === it.tagMat; }
 
-    // sombra suave projetada na parede
-    const hp = it.total * ppm * it.sc;
-    const spread = Math.abs(Math.cos(it.tn * RAD));
-    it.shadow.scale.set(hp * 0.58 * (0.28 + 0.72 * spread), hp * 0.9, 1);
-    it.shadow.position.set(wx + 26 * it.sc, wy - hp * 0.5, it.z - 150);
-    it.shadow.material.opacity = 0.22 * it.op * fb + 0.12 * it.op * (1 - fb) * (sel ? 1 : 0);
   }
 
   renderer.render(scene, camera);
@@ -721,6 +754,8 @@ $('#sheetClose').addEventListener('click', () => sheet(null));
 $('#ticker').innerHTML = V.ticker.map((t) => `<span>${t}</span>`).join('').repeat(8);
 $('#band').innerHTML = Array(2).fill(['Velchro', 'Feito pra quem fica', 'Velchro', 'Escolha com a mão'].map((t) => `<span>${t}</span>`).join('')).join('');
 
+const topbar = $('.top');
+const darks = $$('.dark');
 const scrub = $('#scrub');
 const words = scrub.textContent.trim().split(/\s+/);
 scrub.innerHTML = words.map((w) => `<span class="w">${w}</span>`).join(' ');
@@ -743,6 +778,8 @@ function onScroll() {
       copy.style.transform = `translate3d(0,${(sy * 0.42).toFixed(1)}px,0)`;
       copy.style.setProperty('--co', clamp(1 - sy / (H * 0.55), 0, 1).toFixed(3));
     }
+    const darkUnder = darks.some((d) => { const q = d.getBoundingClientRect(); return q.top <= 34 && q.bottom >= 34; });
+    topbar.classList.toggle('inv', darkUnder);
     const r = scrub.getBoundingClientRect();
     const p = clamp((innerHeight * 0.82 - r.top) / (r.height + innerHeight * 0.25), 0, 1);
     const lit = Math.round(p * wordEls.length);
@@ -762,7 +799,7 @@ function sizeDust() {
 }
 function drawDust(now) {
   requestAnimationFrame(drawDust);
-  if (reduce || window.scrollY >= H) return;
+  if (reduce || LOW || window.scrollY >= H) return;
   ctx.clearRect(0, 0, W, H);
   const lx = ((50 + pm.x * 24) / 100) * W, ly = ((14 + pm.y * 10) / 100) * H;
   for (const m of motes) {
@@ -778,13 +815,20 @@ function drawDust(now) {
 }
 
 /* ======================= início ======================= */
-addEventListener('resize', () => { layout(); });
+let resizeTimer = 0;
+addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (Math.abs(hero.clientWidth - W) < 2 && Math.abs(hero.clientHeight - H) < 90) return;
+    layout();
+  }, 160);
+});
 layout();
 c = cTarget = cMin; // começa com as 10 primeiras peças à vista
 window.scrollTo(0, 0);
 setTimeout(() => copy.classList.add('in'), reduce ? 0 : 500);
 onScroll();
-requestAnimationFrame(drawDust);
+if (!LOW) requestAnimationFrame(drawDust);
 if (document.fonts) document.fonts.ready.then(layout);
 
 await loadModels();

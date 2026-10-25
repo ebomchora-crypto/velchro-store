@@ -5,11 +5,11 @@ window.VELCHRO = {
   sizes: ['P', 'M', 'G', 'GG'],
   ticker: ['Velchro', 'Feito pra quem fica', 'Novo drop', 'Peças limitadas', 'Envio para todo o Brasil'],
   models: {
-    tee:    { file: 'assets/models/tee.glb',    h: 0.70, hang: 'hanger', kind: 'Camiseta' },
-    shirt:  { file: 'assets/models/shirt.glb',  h: 0.74, hang: 'hanger', kind: 'Camisa' },
-    polo:   { file: 'assets/models/polo.glb',   h: 0.70, hang: 'hanger', kind: 'Polo' },
-    jeans1: { file: 'assets/models/jeans1.glb', h: 1.00, hang: 'clip',   kind: 'Calça Jeans' },
-    jeans2: { file: 'assets/models/jeans2.glb', h: 1.00, hang: 'clip',   kind: 'Calça Jeans' },
+    tee:    { file: 'assets/models/tee.glb', fileLow: 'assets/models/low/tee.glb',    h: 0.70, hang: 'hanger', kind: 'Camiseta' },
+    shirt:  { file: 'assets/models/shirt.glb', fileLow: 'assets/models/low/shirt.glb',  h: 0.74, hang: 'hanger', kind: 'Camisa' },
+    polo:   { file: 'assets/models/polo.glb', fileLow: 'assets/models/low/polo.glb',   h: 0.70, hang: 'hanger', kind: 'Polo' },
+    jeans1: { file: 'assets/models/jeans1.glb', fileLow: 'assets/models/low/jeans1.glb', h: 1.00, hang: 'clip',   kind: 'Calça Jeans' },
+    jeans2: { file: 'assets/models/jeans2.glb', fileLow: 'assets/models/low/jeans2.glb', h: 1.00, hang: 'clip',   kind: 'Calça Jeans' },
   },
   products: [
     { id: 'tee-dourada',     model: 'tee',    name: 'Camiseta Monograma Dourada', price: 590,  tag: ['#ff3d12', '#fff'] },
