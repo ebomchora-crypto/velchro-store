@@ -62,11 +62,7 @@
     <canvas class="dust" id="dust" aria-hidden="true"></canvas>
     <div class="light" aria-hidden="true"></div>
 
-    <div class="stage" id="stage">
-      <div class="world" id="worldRail"><div class="rail3d" id="rail3d"></div></div>
-      <div class="world" id="world"><div class="items" id="items"></div></div>
-      <div class="rail" id="rail" aria-hidden="true"><div class="rail-tube"></div></div>
-    </div>
+    <div class="stage" id="stage"><canvas id="gl" aria-hidden="true"></canvas></div>
 
     <h1 class="sr">Velchro</h1>
     <ul class="sr-list" id="srList"></ul>
@@ -143,7 +139,6 @@
     <div class="foot-links">
       <a href="#sobre" data-sheet="sobre">Sobre</a>
       <a href="#contato" data-sheet="contato">Contato</a>
-      <a href="#creditos" data-sheet="creditos">Créditos das fotos</a>
       <a href="#hero" id="toTop">Voltar ao cabideiro ↑</a>
     </div>
   </div>
@@ -169,8 +164,7 @@
   <div class="sheet-body" id="sheetBody"></div>
 </section>
 
-<script src="js/garments.js"></script>
 <script src="js/products.js"></script>
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

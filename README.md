@@ -1,14 +1,15 @@
-# Velchro — loja de roupas
+# Velchro — loja de roupas em 3D
 
-Site estático (HTML + CSS + JS puro, sem build). Inspirado no conceito de "loja de verdade": as peças ficam penduradas num cabideiro, balançam com a física das molas, giram de lado para frente e mostram frente/costas.
+Site estático (sem build). O cabideiro é uma cena WebGL (three.js) com peças 3D penduradas num arco de meia-lua.
 
 ## Rodar
-Abra `index.html` no navegador, ou sirva a pasta (`npx serve .`). Deploy em Netlify/Vercel/GitHub Pages: publique a raiz.
+Sirva a pasta por HTTP (módulos ES não abrem via `file://`): `npx serve .` ou `python3 -m http.server`. Deploy: publique a raiz (Vercel/Netlify/GitHub Pages).
 
-## Editar a loja
-- `js/products.js` — nomes, preços, cores, estampas, número do WhatsApp (`whatsapp`) e frases da faixa inferior.
-- `js/garments.js` — desenho das peças (tee, long, tank, hoodie, jersey, varsity).
-- `css/styles.css` — cores (`:root`), tipografia e layout.
+## Catálogo
+- `js/products.js` — 5 modelos 3D (`models`) e 24 peças (`products`). Para criar uma peça nova basta repetir um modelo com outra cor (`color`, e `gray: true` para tirar a cor original da textura antes de tingir), nome e preço. O número do WhatsApp (`whatsapp`) fica aí também.
+- `assets/models/*.glb` — modelos já otimizados (~1 MB cada).
+- `tools/` — conversão dos modelos originais (OBJ/GLB de 15–50 MB) para GLB leve: `node tools/obj-to-glb.mjs entrada.obj saida.glb basecolor.jpg normal.png 30000` (precisa de `sharp`, `meshoptimizer`, `@gltf-transform/core`).
+- `js/vendor/three-bundle.js` — three.js 0.186 + GLTFLoader + RoomEnvironment empacotados com esbuild.
 
 ## Interações
-Arrastar/rolar o cabideiro · passar o mouse separa os cabides · clicar abre a peça · setas ← → trocam de peça · arrastar na peça gira · Esc fecha · sacola salva no navegador e finaliza pelo WhatsApp.
+Roda do mouse sobre o cabideiro (ou arrastar) gira o arco · mouse sobre uma peça traz ela de frente · clique abre (frente/costas, tamanho, sacola) · setas ← → trocam de peça · arrastar na peça aberta gira · Esc fecha · a sacola fecha o pedido pelo WhatsApp.

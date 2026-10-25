@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import sharp from 'sharp';
+import { Document, NodeIO } from '@gltf-transform/core';
+import { MeshoptSimplifier } from 'meshoptimizer';
+const [,, inPath, outPath, targetTris = '30000'] = process.argv;
+await MeshoptSimplifier.ready;
+const src = await new NodeIO().read(inPath);
+const prim = src.getRoot().listMeshes()[0].listPrimitives()[0];
+const P = prim.getAttribute('POSITION').getArray(), N = prim.getAttribute('NORMAL').getArray(), UV = prim.getAttribute('TEXCOORD_0').getArray();
+const idx = prim.getIndices().getArray();
+const mat = prim.getMaterial();
+const bt = mat.getBaseColorTexture(), nt = mat.getNormalTexture();
+console.log('verts', P.length / 3, 'tris', idx.length / 3, 'base', !!bt, 'normal', !!nt, 'baseColorFactor', mat.getBaseColorFactor());
+const attrs = new Float32Array((P.length / 3) * 5);
+for (let i = 0; i < P.length / 3; i++) { attrs.set([UV[i * 2], UV[i * 2 + 1], N[i * 3], N[i * 3 + 1], N[i * 3 + 2]], i * 5); }
+const [simp, err] = MeshoptSimplifier.simplifyWithAttributes(new Uint32Array(idx), new Float32Array(P), 3, attrs, 5, [4, 4, 0.6, 0.6, 0.6], null, +targetTris * 3, 1, []);
+console.log('simplified', simp.length / 3, err);
+const remap = new Map(), op = [], ou = [], on = [], oi = new Uint32Array(simp.length);
+for (let i = 0; i < simp.length; i++) { const v = simp[i]; let r = remap.get(v); if (r === undefined) { r = op.length / 3; remap.set(v, r); op.push(P[v*3], P[v*3+1], P[v*3+2]); ou.push(UV[v*2], UV[v*2+1]); on.push(N[v*3], N[v*3+1], N[v*3+2]); } oi[i] = r; }
+const doc = new Document(); const buf = doc.createBuffer();
+const acc = (a, t) => doc.createAccessor().setArray(a).setType(t).setBuffer(buf);
+const out = doc.createPrimitive().setAttribute('POSITION', acc(new Float32Array(op), 'VEC3')).setAttribute('NORMAL', acc(new Float32Array(on), 'VEC3')).setAttribute('TEXCOORD_0', acc(new Float32Array(ou), 'VEC2')).setIndices(acc(op.length / 3 < 65536 ? new Uint16Array(oi) : oi, 'SCALAR'));
+const tex = async (t, q) => doc.createTexture().setImage(new Uint8Array(await sharp(Buffer.from(t.getImage())).resize(1024, 1024, { fit: 'fill' }).jpeg({ quality: q }).toBuffer())).setMimeType('image/jpeg');
+const m = doc.createMaterial('cloth').setRoughnessFactor(0.85).setMetallicFactor(0);
+if (bt) m.setBaseColorTexture(await tex(bt, 84));
+if (nt) m.setNormalTexture(await tex(nt, 88));
+out.setMaterial(m);
+doc.createScene().addChild(doc.createNode('garment').setMesh(doc.createMesh('garment').addPrimitive(out)));
+await new NodeIO().write(outPath, doc);
+console.log('wrote', outPath, (fs.statSync(outPath).size / 1e6).toFixed(2), 'MB, verts', op.length / 3);
