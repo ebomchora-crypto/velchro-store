@@ -27,7 +27,7 @@ const LOW = matchMedia('(pointer: coarse)').matches || innerWidth < 760
   || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
 let pr = Math.min(LOW ? 1.5 : 2, devicePixelRatio || 1);  // resolução de render (ajustada sozinha se o aparelho engasgar)
 
-const SIDE = 72;     // roupa de lado em repouso; vira de frente só com o mouse
+const SIDE = 58;     // roupa de lado em repouso; vira de frente só com o mouse
 const TOP = -0.115;  // topo da peça abaixo do trilho (m)
 const PPM = 1.16;    // px por metro, em múltiplos de iw
 
@@ -37,7 +37,7 @@ let stepDeg = 12, VIS = 10, narrow = false, chord = 1, cMin = 0, cMax = 0, railF
 /* ======================= cena 3D ======================= */
 let renderer;
 try {
-  renderer = new T.WebGLRenderer({ canvas, antialias: !LOW, alpha: true, powerPreference: 'high-performance' });
+  renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
 } catch (err) {
   hero.insertAdjacentHTML('beforeend', '<p class="nogl">Seu navegador não conseguiu abrir o 3D. Tente atualizar o Chrome, Edge ou Safari.</p>');
   throw err;
@@ -45,7 +45,7 @@ try {
 renderer.setPixelRatio(pr);
 renderer.outputColorSpace = T.SRGBColorSpace;
 renderer.toneMapping = T.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.toneMappingExposure = 1.18;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = LOW ? T.PCFSoftShadowMap : T.VSMShadowMap;
 renderer.shadowMap.autoUpdate = !LOW;
@@ -53,8 +53,8 @@ renderer.shadowMap.autoUpdate = !LOW;
 const scene = new T.Scene();
 const pmrem = new T.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new T.RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.8;
-const keyLight = new T.DirectionalLight(0xfff0d8, 1.7);
+scene.environmentIntensity = 1.05;
+const keyLight = new T.DirectionalLight(0xfff0d8, 2.3);
 const LIGHT_DIR = new T.Vector3(-0.13, 0.24, 1).normalize();
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(LOW ? 512 : 1024, LOW ? 512 : 1024);
@@ -65,9 +65,9 @@ keyLight.shadow.camera.near = 300;
 keyLight.shadow.camera.far = 3000;
 keyLight.target.position.set(0, 0, -150);
 scene.add(keyLight, keyLight.target);
-const wall = new T.Mesh(new T.PlaneGeometry(1, 1), new T.ShadowMaterial({ color: 0x2a2216, opacity: 0.3 }));
+const wall = new T.Mesh(new T.PlaneGeometry(1, 1), new T.ShadowMaterial({ color: 0x000000, opacity: 0.38 }));
 wall.receiveShadow = true;
-const fillLight = new T.DirectionalLight(0xdfe8ff, 0.5);
+const fillLight = new T.DirectionalLight(0xcfe3ff, 0.9);
 fillLight.position.set(500, 120, 500);
 scene.add(fillLight);
 
@@ -100,7 +100,7 @@ function grayTexture(tex) {
   }
   g.putImageData(d, 0, 0);
   const t = new T.CanvasTexture(c);
-  t.flipY = false; t.colorSpace = T.SRGBColorSpace; t.anisotropy = LOW ? 1 : 4;
+  t.flipY = false; t.colorSpace = T.SRGBColorSpace; t.anisotropy = LOW ? 2 : 8;
   return t;
 }
 
@@ -115,7 +115,7 @@ async function loadModels() {
     const bb = geo.boundingBox, size = bb.getSize(new T.Vector3()), ctr = bb.getCenter(new T.Vector3());
     const s = m.h / size.y;
     const map = mesh.material.map;
-    if (map) map.anisotropy = LOW ? 1 : 4;
+    if (map) map.anisotropy = LOW ? 2 : 8;
     MODELS[key] = { geo, map, normal: mesh.material.normalMap, s, bb, ctr, size: size.multiplyScalar(s), cfg: m, gray: null };
   }));
 }
@@ -247,9 +247,9 @@ function layout() {
   stepDeg = 120 / VIS;
   const footer = Math.max(H * 0.043, 32);
   copy.classList.toggle('compact', H < 760);
-  arcTop = H * (narrow ? 0.2 : 0.17);
-  iw = Math.min(0.3 * H, (narrow ? 0.44 : 0.19) * W);
-  const copyTop = H - footer - H * 0.032 - copy.offsetHeight;
+  arcTop = H * (narrow ? 0.25 : 0.27);
+  iw = Math.min(0.32 * H, (narrow ? 0.5 : 0.215) * W);
+  const copyTop = H - 52 - H * 0.032 - copy.offsetHeight;
   iw = Math.max(0.15 * H, Math.min(iw, (copyTop - 16 - arcTop) / 1.3));
   ppm = iw * PPM;
   R = narrow ? W * 0.62 : Math.min(W * 0.64, H * 1.05);
@@ -281,7 +281,7 @@ function layout() {
 
 const focusIw = (p) => {
   const footer = Math.max(H * 0.043, 32);
-  const avail = H - railFocus - footer - 24 - 214 - 30;
+  const avail = H - railFocus - 52 - 24 - 300 - 30;
   return Math.max(150, Math.min(0.45 * H, 0.7 * W, avail / (((V.models[p.model].h + 0.115) * PPM))));
 };
 
@@ -346,7 +346,7 @@ function frame(now) {
   rig.rotation.y = pm.x * 0.12 * fb;
   rig.rotation.x = -pm.y * 0.06 * fb;
   if (!LOW) { // mexer a luz de fundo a cada quadro repinta o gradiente: só no desktop
-    const lx = 50 + pm.x * 24, ly = 14 + pm.y * 10;
+    const lx = 50 + pm.x * 24, ly = 30 + pm.y * 10;
     if (Math.abs(lx - lastLx) > 0.25 || Math.abs(ly - lastLy) > 0.25) {
       hero.style.setProperty('--lx', lx.toFixed(1) + '%'); hero.style.setProperty('--ly', ly.toFixed(1) + '%');
       lastLx = lx; lastLy = ly;
@@ -759,8 +759,10 @@ $$('[data-sheet]').forEach((a) => a.addEventListener('click', (e) => { e.prevent
 $('#sheetClose').addEventListener('click', () => sheet(null));
 
 /* ======================= faixas de texto ======================= */
-$('#ticker').innerHTML = V.ticker.map((t) => `<span>${t}</span>`).join('').repeat(8);
-$('#band').innerHTML = Array(2).fill(['Velchro', 'Feito pra quem fica', 'Velchro', 'Escolha com a mão'].map((t) => `<span>${t}</span>`).join('')).join('');
+const bee = '<svg class="bee" aria-hidden="true"><use href="#bee"/></svg>';
+const phrases = (arr) => arr.map((t) => `<span>${t}</span>${bee}`).join('');
+$('#ticker').innerHTML = phrases(V.ticker).repeat(8);
+$('#band').innerHTML = phrases(['Velchro', 'Feito pra quem fica', 'Tiragem curta', 'Escolha com a mão', 'Envio para todo o Brasil']).repeat(2);
 
 /* ---------- poeira na luz ---------- */
 const cv = $('#dust');
@@ -775,7 +777,7 @@ function drawDust(now) {
   requestAnimationFrame(drawDust);
   if (reduce || LOW || window.scrollY >= H) return;
   ctx.clearRect(0, 0, W, H);
-  const lx = ((50 + pm.x * 24) / 100) * W, ly = ((14 + pm.y * 10) / 100) * H;
+  const lx = ((50 + pm.x * 24) / 100) * W, ly = ((30 + pm.y * 10) / 100) * H;
   for (const m of motes) {
     m.y += m.s * 0.016; m.x += Math.sin(now / 2400 + m.p) * 0.0004;
     if (m.y > 1) m.y = -0.02;
@@ -783,7 +785,7 @@ function drawDust(now) {
     const d = Math.hypot((px - lx) / (W * 0.5), (py - ly) / (H * 0.7));
     const a = clamp(1 - d, 0, 1) * (0.35 + 0.35 * Math.sin(now / 900 + m.p)) * 0.5;
     if (a < 0.01) continue;
-    ctx.fillStyle = `rgba(70,58,34,${a.toFixed(3)})`;
+    ctx.fillStyle = `rgba(255,202,80,${(a * 1.4).toFixed(3)})`;
     ctx.beginPath(); ctx.arc(px, py, m.r, 0, 6.283); ctx.fill();
   }
 }

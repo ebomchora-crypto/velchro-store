@@ -41,7 +41,7 @@ export function initLanding(ctx) {
   }
 
   /* ---------- entrada do hero ---------- */
-  $$('.headline > span').forEach((line) => {
+  $$('.mega > span').forEach((line) => {
     const txt = line.textContent;
     line.setAttribute('aria-label', txt);
     line.innerHTML = txt.split(' ').map((w) => `<span class="wd" aria-hidden="true">${[...w].map((ch) => `<span class="ch">${ch}</span>`).join('')}</span>`).join(' ');
@@ -50,9 +50,9 @@ export function initLanding(ctx) {
     const tl = gsap.timeline({ delay: 0.25, defaults: { ease: 'expo.out' } });
     tl.fromTo(topbar, { yPercent: -100, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.2 }, 0)
       .fromTo('.copy .eyebrow', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1 }, 0.25)
-      .fromTo('.headline .ch', { yPercent: 115, rotate: 7, opacity: 0 }, { yPercent: 0, rotate: 0, opacity: 1, duration: 1.4, stagger: { each: 0.03, from: 'start' } }, 0.35)
+      .fromTo('.mega .ch', { yPercent: 118, rotate: 6, opacity: 0 }, { yPercent: 0, rotate: 0, opacity: 1, duration: 1.5, stagger: { each: 0.035, from: 'start' } }, 0.2)
       .fromTo('.copy .lede', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 1.2 }, 1)
-      .fromTo('.copy .cue', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 1 }, 1.2);
+      .fromTo('.copy .hero-cta', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 1 }, 1.25);
   } else gsap.set(topbar, { opacity: 1 });
 
   // ao rolar para fora do hero: a cena sobe devagar, o texto sobe mais rápido e some
@@ -60,7 +60,7 @@ export function initLanding(ctx) {
   gsap.set(copy, { '--co': 1 });
   if (!reduce) {
     gsap.to('#stage', { y: () => innerHeight * 0.22, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true } });
-    gsap.to(copy, { y: () => innerHeight * 0.42, '--co': 0, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: '55% top', scrub: true } });
+    gsap.to(copy, { y: () => innerHeight * 0.3, '--co': 0, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: '55% top', scrub: true } });
   }
 
   /* ---------- manifesto: as palavras acendem com a rolagem (seção fixa) ---------- */
@@ -83,14 +83,13 @@ export function initLanding(ctx) {
 
   /* ---------- destaques: galeria de rolagem lateral ---------- */
   const FEAT = ['tee-dourada', 'jeans-mono', 'polo-preta', 'camisa-dourada', 'jeans-patch', 'polo-marinho', 'camisa-branca', 'tee-vermelha'];
-  const BG = ['#d9d4c6', '#c9d2d9', '#e3d3c4', '#cfd6c8'];
-  const track = $('#featTrack');
+    const track = $('#featTrack');
   track.innerHTML = FEAT.map((id, k) => {
     const i = P.findIndex((p) => p.id === id), p = P[i];
     return `<article class="card" data-i="${i}">
-      <div class="card-img" style="--c:${BG[k % 4]}"><span class="card-no">${String(k + 1).padStart(2, '0')}</span><img alt="${p.name}" data-i="${i}"></div>
+      <div class="card-img"><span class="card-no">Nº ${String(k + 1).padStart(2, '0')}</span><img alt="${p.name}" data-i="${i}"></div>
       <h3>${p.name}</h3><p>${brl(p.price)}</p>
-      <a class="go magnetic" href="#hero" data-pick="${i}">Ver no cabideiro</a></article>`;
+      <a class="go magnetic" href="#hero" data-pick="${i}">Ver no cabideiro →</a></article>`;
   }).join('');
   track.addEventListener('click', (e) => {
     const a = e.target.closest('[data-pick]');
@@ -129,7 +128,7 @@ export function initLanding(ctx) {
 
     // faixa de texto: anda sozinha e acelera/inverte com a velocidade da rolagem
     const band = $('#band');
-    const loop = gsap.to(band, { xPercent: -50, duration: 42, ease: 'none', repeat: -1 });
+    const loop = gsap.fromTo(band, { xPercent: -50 }, { xPercent: 0, duration: 42, ease: 'none', repeat: -1 });
     const skew = gsap.quickSetter(band, 'skewX', 'deg');
     let sk = 0;
     lenis && lenis.on('scroll', ({ velocity }) => {
@@ -139,7 +138,7 @@ export function initLanding(ctx) {
     gsap.ticker.add(() => { skew(sk); sk *= 0.9; });
 
     // título final cresce com a rolagem
-    gsap.fromTo('.cta-title', { scale: 0.78, opacity: 0.3 }, { scale: 1, opacity: 1, ease: 'none', scrollTrigger: { trigger: '#cta', start: 'top 85%', end: 'top 20%', scrub: true } });
+    gsap.fromTo('.cta-title', { scale: 0.78, opacity: 0.3 }, { scale: 1, opacity: 1, ease: 'none', scrollTrigger: { trigger: '#cta-final', start: 'top 85%', end: 'top 20%', scrub: true } });
   } else $('#band').parentElement.style.display = 'none';
 
   /* ---------- perguntas rápidas ---------- */
@@ -191,7 +190,6 @@ export function initLanding(ctx) {
     trigger: d, start: 'top 44px', end: 'bottom 44px', invalidateOnRefresh: true,
     onToggle: (self) => {
       self.isActive ? darkActive.add(d) : darkActive.delete(d);
-      topbar.classList.toggle('inv', darkActive.size > 0);
       document.body.classList.toggle('on-dark', darkActive.size > 0);
     },
   }));
