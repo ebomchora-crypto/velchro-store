@@ -1,4 +1,5 @@
 import * as T from './vendor/three-bundle.js';
+import { initLanding } from './landing.js';
 
 const V = window.VELCHRO;
 const P = V.products;
@@ -507,12 +508,16 @@ stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
 
 // a roda só move o cabideiro quando o mouse está sobre ele; nas pontas e no resto da página, rola a página
-hero.addEventListener('wheel', (e) => {
-  if (focus >= 0 || e.ctrlKey) return;
+function wantsWheel(e) {
+  if (focus >= 0 || e.ctrlKey || !items.length) return false;
   const [x, y] = loc(e);
-  if (y < 0 || (y > H * 0.64 && pick(x, y) < 0)) return;
+  if (y < 0 || (y > H * 0.64 && pick(x, y) < 0)) return false;
   const dy = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  if ((dy > 0 && cTarget >= cMax - 0.01) || (dy < 0 && cTarget <= cMin + 0.01)) return;
+  return !((dy > 0 && cTarget >= cMax - 0.01) || (dy < 0 && cTarget <= cMin + 0.01));
+}
+hero.addEventListener('wheel', (e) => {
+  if (!wantsWheel(e)) return;
+  const dy = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   e.preventDefault();
   const unit = e.deltaMode === 1 ? 40 : 1;
   cTarget = clamp(cTarget + (dy * unit) / 120, cMin, cMax);
@@ -521,10 +526,11 @@ hero.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 /* ======================= foco ======================= */
-const lock = (on) => html.classList.toggle('locked', on);
+let landing = null;
+const lock = (on) => { html.classList.toggle('locked', on); landing && landing.setLocked(on); };
 
 function open(i) {
-  if (window.scrollY > 2) window.scrollTo({ top: 0, behavior: 'instant' });
+  if (window.scrollY > 2) { landing ? landing.toTop() : window.scrollTo({ top: 0, behavior: 'instant' }); }
   lock(true);
   focus = i;
   size = null;
@@ -648,27 +654,29 @@ addEventListener('keydown', (e) => {
 /* ======================= sacola ======================= */
 let thumbR, thumbScene, thumbCam;
 const thumbCache = {};
-function thumbOf(p) {
-  if (thumbCache[p.id]) return thumbCache[p.id];
+function thumbOf(p, big = false) {
+  const key = p.id + (big ? ':big' : '');
+  if (thumbCache[key]) return thumbCache[key];
   if (!thumbR) {
     thumbR = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    thumbR.setSize(176, 200, false); thumbR.setPixelRatio(1);
+    thumbR.setPixelRatio(1);
     thumbR.outputColorSpace = T.SRGBColorSpace; thumbR.toneMapping = T.ACESFilmicToneMapping; thumbR.toneMappingExposure = 1.08;
     thumbScene = new T.Scene();
     thumbScene.environment = new T.PMREMGenerator(thumbR).fromScene(new T.RoomEnvironment(), 0.04).texture;
     const l = new T.DirectionalLight(0xfff0d8, 1.7); l.position.set(-1, 2, 3); thumbScene.add(l);
     thumbCam = new T.OrthographicCamera(-0.53, 0.53, 0.6, -0.6, 0.1, 10); thumbCam.position.set(0, 0, 4);
   }
+  thumbR.setSize(big ? 480 : 176, big ? 545 : 200, false);
   const b = buildItem(p);
   b.mats.forEach((m) => { m.opacity = 1; m.transparent = false; });
   b.tagMat.opacity = 0;
-  b.turn.rotation.y = 0.28;
+  b.turn.rotation.y = big ? 0.42 : 0.28;
   b.root.position.y = b.total / 2 + 0.01;
   thumbScene.add(b.root);
   thumbR.render(thumbScene, thumbCam);
   thumbScene.remove(b.root);
   const url = thumbR.domElement.toDataURL('image/png');
-  thumbCache[p.id] = url;
+  thumbCache[key] = url;
   return url;
 }
 
@@ -750,43 +758,9 @@ function sheet(name) {
 $$('[data-sheet]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); sheet(a.dataset.sheet); }));
 $('#sheetClose').addEventListener('click', () => sheet(null));
 
-/* ======================= página: parallax, revelar e texto que acende ======================= */
+/* ======================= faixas de texto ======================= */
 $('#ticker').innerHTML = V.ticker.map((t) => `<span>${t}</span>`).join('').repeat(8);
 $('#band').innerHTML = Array(2).fill(['Velchro', 'Feito pra quem fica', 'Velchro', 'Escolha com a mão'].map((t) => `<span>${t}</span>`).join('')).join('');
-
-const topbar = $('.top');
-const darks = $$('.dark');
-const scrub = $('#scrub');
-const words = scrub.textContent.trim().split(/\s+/);
-scrub.innerHTML = words.map((w) => `<span class="w">${w}</span>`).join(' ');
-const wordEls = $$('.w', scrub);
-
-const io = new IntersectionObserver((entries) => {
-  for (const en of entries) if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
-}, { threshold: 0.18 });
-$$('.reveal').forEach((el, k) => { el.style.setProperty('--d', (k % 3) * 110); io.observe(el); });
-
-let ticking = false;
-function onScroll() {
-  if (ticking) return;
-  ticking = true;
-  requestAnimationFrame(() => {
-    ticking = false;
-    const sy = window.scrollY;
-    if (sy < H * 1.2) {
-      stage.style.transform = `translate3d(0,${(sy * 0.22).toFixed(1)}px,0)`;
-      copy.style.transform = `translate3d(0,${(sy * 0.42).toFixed(1)}px,0)`;
-      copy.style.setProperty('--co', clamp(1 - sy / (H * 0.55), 0, 1).toFixed(3));
-    }
-    const darkUnder = darks.some((d) => { const q = d.getBoundingClientRect(); return q.top <= 34 && q.bottom >= 34; });
-    topbar.classList.toggle('inv', darkUnder);
-    const r = scrub.getBoundingClientRect();
-    const p = clamp((innerHeight * 0.82 - r.top) / (r.height + innerHeight * 0.25), 0, 1);
-    const lit = Math.round(p * wordEls.length);
-    wordEls.forEach((w, k) => w.classList.toggle('lit', k < lit));
-  });
-}
-addEventListener('scroll', onScroll, { passive: true });
 
 /* ---------- poeira na luz ---------- */
 const cv = $('#dust');
@@ -826,14 +800,21 @@ addEventListener('resize', () => {
 layout();
 c = cTarget = cMin; // começa com as 10 primeiras peças à vista
 window.scrollTo(0, 0);
-setTimeout(() => copy.classList.add('in'), reduce ? 0 : 500);
-onScroll();
 if (!LOW) requestAnimationFrame(drawDust);
 if (document.fonts) document.fonts.ready.then(layout);
+
+let modelsDone; const modelsReady = new Promise((r) => { modelsDone = r; });
+try {
+  landing = initLanding({ P, brl, thumbOf, open, wantsWheel, whatsapp: V.whatsapp, modelsReady });
+} catch (err) {
+  console.error(err);
+  html.classList.add('no-anim');
+}
 
 await loadModels();
 makeItems();
 renderBag();
+modelsDone();
 const start = P.findIndex((p) => '#' + p.id === location.hash);
 if (start >= 0) {
   items.forEach((it) => { it.born = true; });

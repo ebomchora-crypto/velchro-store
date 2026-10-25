@@ -12,9 +12,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2312110f'/%3E%3Cpath d='M7 9h5l4 11 4-11h5l-7 16h-4z' fill='%23ff3d12'/%3E%3C/svg%3E">
+<script>document.documentElement.classList.add("js")</script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<div class="progress" aria-hidden="true"><i id="progress"></i></div>
+<div class="cursor" id="cursor" aria-hidden="true"><i></i></div>
 
 <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
   <defs>
@@ -71,7 +74,7 @@
       <p class="eyebrow"><span id="range">01–10 / 24</span><em id="eyeSuffix"> · Drop 01</em></p>
       <h2 class="headline"><span>A loja inteira</span><span>num cabideiro.</span></h2>
       <p class="lede">Role sobre as peças, passe o mouse para trazê-las à frente e clique para provar de perto. Do jeito que se escolhe numa loja de verdade.</p>
-      <a class="cue" href="#manifesto" id="cue"><span>Continuar</span><i aria-hidden="true"></i></a>
+      <a class="cue" href="#manifesto" data-go="#manifesto" id="cue"><span>Continuar</span><i aria-hidden="true"></i></a>
     </div>
 
     <p class="hint" id="hint"><span class="hint-d">Role sobre as peças</span><span class="hint-m">Arraste para os lados</span></p>
@@ -96,15 +99,31 @@
   </section>
 
   <section class="sec manifesto" id="manifesto">
-    <p class="eyebrow reveal">Manifesto</p>
+    <p class="eyebrow">Manifesto</p>
     <p class="scrub" id="scrub">Roupa boa não se escolhe num catálogo. Escolhe-se com a mão, no cabide, sob a luz da loja. A Velchro é essa sensação, aberta a qualquer hora, em qualquer lugar.</p>
+  </section>
+
+  <section class="sec stats" id="stats">
+    <div class="stat"><b data-count="24">0</b><span>peças no drop 01</span></div>
+    <div class="stat"><b data-count="5">0</b><span>modelos em 3D, de todos os lados</span></div>
+    <div class="stat"><b data-count="4">0</b><span>tamanhos, do P ao GG</span></div>
+    <div class="stat"><b data-count="1" data-suffix=" clique">0</b><span>do cabide ao pedido no WhatsApp</span></div>
+  </section>
+
+  <section class="featured" id="featured">
+    <div class="featured-head">
+      <p class="eyebrow">Destaques do drop</p>
+      <h2 class="h2">Oito peças<br>para começar.</h2>
+      <p class="featured-sub">Role de lado. Cada card abre a peça no cabideiro, em 3D.</p>
+    </div>
+    <div class="track" id="featTrack"></div>
   </section>
 
   <section class="sec pillars">
     <article class="pillar reveal">
       <span class="num">01</span>
       <h3>Peça de verdade</h3>
-      <p>Cada item aparece como ele é: foto real, no cabide, sem filtro e sem maquiagem. O que você vê é o que chega.</p>
+      <p>Cada item aparece como ele é: modelo em 3D, de frente, de costas e de lado, sem filtro e sem maquiagem. O que você vê é o que chega.</p>
     </article>
     <article class="pillar reveal">
       <span class="num">02</span>
@@ -123,9 +142,30 @@
     <ol class="step-list">
       <li class="reveal"><b>Role</b><span>Gire a roda do mouse sobre o cabideiro, ou arraste no celular. A meia-lua se move e traz as próximas peças.</span></li>
       <li class="reveal"><b>Aproxime</b><span>Passe o mouse numa peça: ela vira de frente e os cabides vizinhos abrem espaço para você enxergar.</span></li>
-      <li class="reveal"><b>Clique</b><span>A peça vem para o centro, com preço, tamanhos e sacola. As setas levam para a próxima.</span></li>
+      <li class="reveal"><b>Clique</b><span>A peça vem para o centro, com preço, tamanhos e sacola. Gire para ver as costas. As setas levam para a próxima.</span></li>
     </ol>
     <div class="band" aria-hidden="true"><div class="band-track" id="band"></div></div>
+  </section>
+
+  <section class="sec faq" id="faq">
+    <div class="faq-head">
+      <p class="eyebrow reveal">Perguntas rápidas</p>
+      <h2 class="h2 reveal">Antes de<br>pedir.</h2>
+    </div>
+    <div class="faq-list" id="faqList">
+      <div class="qa reveal"><button class="q" type="button" aria-expanded="false"><span>Como faço o pedido?</span><i aria-hidden="true"></i></button><div class="a"><p>Abra a peça, escolha o tamanho e adicione à sacola. Na sacola, o botão "Finalizar pelo WhatsApp" monta a mensagem com tudo o que você escolheu e leva direto para a loja.</p></div></div>
+      <div class="qa reveal"><button class="q" type="button" aria-expanded="false"><span>Quais as formas de pagamento?</span><i aria-hidden="true"></i></button><div class="a"><p>Pix e cartão, em até 3x sem juros. O pagamento é combinado no atendimento, depois que a loja confirma a disponibilidade da peça.</p></div></div>
+      <div class="qa reveal"><button class="q" type="button" aria-expanded="false"><span>Quanto tempo leva para chegar?</span><i aria-hidden="true"></i></button><div class="a"><p>Enviamos para todo o Brasil. O prazo e o frete são calculados pelo seu CEP na conversa e informados antes de você pagar.</p></div></div>
+      <div class="qa reveal"><button class="q" type="button" aria-expanded="false"><span>E se não servir?</span><i aria-hidden="true"></i></button><div class="a"><p>Você tem 7 dias depois de receber para pedir a troca de tamanho, com a peça sem uso e com a etiqueta.</p></div></div>
+      <div class="qa reveal"><button class="q" type="button" aria-expanded="false"><span>Como escolho o tamanho?</span><i aria-hidden="true"></i></button><div class="a"><p>A modelagem é larga, no estilo oversized. Na dúvida entre dois tamanhos, fique com o menor. Se quiser as medidas exatas, é só pedir no atendimento.</p></div></div>
+    </div>
+  </section>
+
+  <section class="sec cta-final dark" id="cta">
+    <p class="eyebrow reveal">Próximo drop</p>
+    <h2 class="cta-title reveal">Quem fica,<br>sai na frente.</h2>
+    <p class="cta-sub reveal">Entre na lista e receba o aviso antes de a próxima tiragem chegar ao cabideiro.</p>
+    <a class="btn magnetic reveal" id="listBtn" href="#" target="_blank" rel="noopener"><span>Entrar na lista pelo WhatsApp</span></a>
   </section>
 </main>
 
@@ -139,7 +179,8 @@
     <div class="foot-links">
       <a href="#sobre" data-sheet="sobre">Sobre</a>
       <a href="#contato" data-sheet="contato">Contato</a>
-      <a href="#hero" id="toTop">Voltar ao cabideiro ↑</a>
+      <a href="#faq" data-go="#faq">Perguntas rápidas</a>
+      <a href="#hero" data-go="#hero" id="toTop">Voltar ao cabideiro ↑</a>
     </div>
   </div>
   <p class="foot-mark" aria-hidden="true">VELCHRO</p>

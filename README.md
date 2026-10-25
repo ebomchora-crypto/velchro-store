@@ -10,6 +10,7 @@ Sirva a pasta por HTTP (módulos ES não abrem via `file://`): `npx serve .` ou 
 - `assets/models/*.glb` — modelos já otimizados (~1 MB cada).
 - `tools/` — conversão dos modelos originais (OBJ/GLB de 15–50 MB) para GLB leve: `node tools/obj-to-glb.mjs entrada.obj saida.glb basecolor.jpg normal.png 30000` (precisa de `sharp`, `meshoptimizer`, `@gltf-transform/core`).
 - `js/vendor/three-bundle.js` — three.js 0.186 + GLTFLoader + RoomEnvironment empacotados com esbuild.
+- `js/landing.js` + `js/vendor/motion-bundle.js` — landing: Lenis (rolagem suave), GSAP 3.15 + ScrollTrigger (animações), seções de conteúdo.
 
 ## Interações
 Roda do mouse sobre o cabideiro (ou arrastar) gira o arco · mouse sobre uma peça traz ela de frente · clique abre (frente/costas, tamanho, sacola) · setas ← → trocam de peça · arrastar na peça aberta gira · Esc fecha · a sacola fecha o pedido pelo WhatsApp.
